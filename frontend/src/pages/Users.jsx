@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import axios from "axios";
+import api from "../utils/api";
 import { Search } from "lucide-react";
 
 export default function Users() {
@@ -12,8 +12,8 @@ export default function Users() {
   const { data, isLoading } = useQuery({
     queryKey: ["users", page, search, city, status],
     queryFn: () =>
-      axios
-        .get("/api/users/", { params: { page, page_size: 50, search, city, status: status || undefined } })
+      api
+        .get("/users/", { params: { page, page_size: 50, search, city, status: status || undefined } })
         .then((r) => r.data),
     keepPreviousData: true,
   });
