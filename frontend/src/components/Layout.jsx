@@ -1,11 +1,12 @@
 import { Outlet, NavLink } from "react-router-dom";
-import { LayoutDashboard, Users, FileBarChart, LogOut } from "lucide-react";
+import { LayoutDashboard, Users, FileBarChart, LogOut, GitBranch } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
 const nav = [
   { to: "/",        label: "Dashboard", icon: LayoutDashboard },
   { to: "/users",   label: "Users",     icon: Users },
-  { to: "/reports", label: "Reports",   icon: FileBarChart },
+  { to: "/reports",  label: "Reports",  icon: FileBarChart },
+  { to: "/pipeline", label: "Pipeline", icon: GitBranch },
 ];
 
 export default function Layout() {
