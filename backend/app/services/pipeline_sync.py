@@ -4,6 +4,7 @@ and upserts into Supabase every 20 minutes.
 New users found in any API response are automatically saved to users table.
 """
 import requests
+import io
 from datetime import datetime
 from app.core.database import query_one
 from sqlalchemy import text
@@ -28,95 +29,106 @@ def save_status(db, status: str):
     db.commit()
 
 
+def build_payload():
+    today = datetime.utcnow().strftime("%Y-%m-%d")
+    return {
+        "packageId": PACKAGE_ID,
+        "pageNum": 1,
+        "pageSize": 100000,
+        "useUpiQuery": True,
+        "queryDate": [today, today],
+    }
+
+
 def fetch_api(url: str, token: str):
+    import pandas as pd
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
-    resp = requests.post(url, headers=headers, json={"packageId": PACKAGE_ID}, timeout=30)
+    resp = requests.post(url, headers=headers, json=build_payload(), timeout=60)
     if resp.status_code != 200:
         raise Exception(f"{resp.status_code}: {resp.text[:200]}")
-    data = resp.json()
-    if isinstance(data, list):
-        return data
-    for key in ("data", "rows", "list", "records", "result"):
-        if key in data and isinstance(data[key], list):
-            return data[key]
-    return []
 
+    # Excel binary response (starts with PK zip magic bytes)
+    if resp.content[:2] == b"PK" or "octet-stream" in resp.headers.get("Content-Type", ""):
+        df = pd.read_excel(io.BytesIO(resp.content), engine="openpyxl")
+        return df.to_dict("records")
 
-def ts(val):
-    if not val:
-        return None
     try:
-        import pandas as pd
-        r = pd.to_datetime(val, errors="coerce")
-        return None if str(r) == "NaT" else r.strftime("%Y-%m-%d %H:%M:%S")
-    except:
-        return None
+        data = resp.json()
+        if isinstance(data, list):
+            return data
+        for key in ("data", "rows", "list", "records", "result"):
+            if key in data and isinstance(data[key], list):
+                return data[key]
+        return []
+    except Exception:
+        return []
 
 
 def safe(val, max_len=None):
     if val is None:
         return None
+    import math
+    try:
+        if isinstance(val, float) and math.isnan(val):
+            return None
+    except Exception:
+        pass
     s = str(val).strip()
-    if s in ("None", "nan", ""):
+    if s in ("None", "nan", "NaT", ""):
         return None
-    return s[:max_len] if max_len else s
+    return s[:max_len] if max_len else s or None
 
 
-def upsert_users_from_rows(db, rows):
-    """Extract user info from any API row and upsert into users table."""
+def num(val):
+    if val is None:
+        return 0.0
+    try:
+        import math
+        if isinstance(val, float) and math.isnan(val):
+            return 0.0
+        return float(val)
+    except Exception:
+        return 0.0
+
+
+def ts(val):
+    if val is None:
+        return None
+    try:
+        import pandas as pd
+        r = pd.to_datetime(val, errors="coerce")
+        return None if str(r) == "NaT" else r.strftime("%Y-%m-%d %H:%M:%S")
+    except Exception:
+        return None
+
+
+def upsert_users_from_rows(db, rows, uid_key="UserId"):
+    """Save any new users found in API rows into users table."""
     users = []
-    fins = []
     for r in rows:
-        uid = r.get("userId") or r.get("user_id") or r.get("uid")
+        uid = r.get(uid_key) or r.get("userId") or r.get("user_id")
         if not uid:
             continue
         try:
             uid = int(uid)
-        except:
+        except Exception:
             continue
         users.append({
             "user_id": uid,
+            "phone": safe(r.get("userPhone") or r.get("phone") or r.get("mobile"), 20),
             "username": safe(r.get("username") or r.get("nickName"), 100),
-            "phone": safe(r.get("phone") or r.get("mobile"), 20),
-            "city": safe(r.get("city") or r.get("area"), 100),
-            "reg_channel": safe(r.get("channel") or r.get("regChannel"), 100),
-            "reg_source": safe(r.get("source") or r.get("regSource"), 50),
-            "user_status": int(r.get("status") or 0) if str(r.get("status", "")).isdigit() else 0,
             "update_time": ts(r.get("updateTime") or r.get("update_time")),
         })
-        balance = r.get("balance") or r.get("userBalance") or 0
-        deposits = r.get("totalDeposit") or r.get("totalRecharge") or r.get("rechargeAmount") or 0
-        withdrawals = r.get("totalWithdraw") or r.get("totalWithdrawal") or r.get("withdrawAmount") or 0
-        if any([balance, deposits, withdrawals]):
-            fins.append({
-                "user_id": uid,
-                "balance": float(balance),
-                "total_deposits": float(deposits),
-                "total_withdrawals": float(withdrawals),
-            })
-
     if users:
         db.execute(text("""
-            INSERT INTO users (user_id, username, phone, city, reg_channel, reg_source, user_status, update_time)
-            VALUES (:user_id, :username, :phone, :city, :reg_channel, :reg_source, :user_status, :update_time)
+            INSERT INTO users (user_id, phone, username, update_time)
+            VALUES (:user_id, :phone, :username, :update_time)
             ON CONFLICT (user_id) DO UPDATE SET
+              phone = COALESCE(EXCLUDED.phone, users.phone),
               username = COALESCE(EXCLUDED.username, users.username),
-              phone    = COALESCE(EXCLUDED.phone, users.phone),
-              city     = COALESCE(EXCLUDED.city, users.city),
               update_time = EXCLUDED.update_time
         """), users)
-
-    if fins:
-        db.execute(text("""
-            INSERT INTO user_financials (user_id, balance, total_deposits, total_withdrawals)
-            VALUES (:user_id, :balance, :total_deposits, :total_withdrawals)
-            ON CONFLICT (user_id) DO UPDATE SET
-              balance           = EXCLUDED.balance,
-              total_deposits    = EXCLUDED.total_deposits,
-              total_withdrawals = EXCLUDED.total_withdrawals
-        """), fins)
-
-    db.commit()
+        db.commit()
     return len(users)
 
 
@@ -126,28 +138,25 @@ def sync_all(db):
         raise Exception("No bearer token configured")
 
     results = {}
-    total_new_users = 0
 
     # --- DEPOSITS ---
     try:
         rows = fetch_api(APIS["deposits"], token)
+        upsert_users_from_rows(db, rows)
         if rows:
-            # Save users found in deposit data
-            total_new_users += upsert_users_from_rows(db, rows)
-            # Save deposit records
             records = []
             for r in rows:
-                uid = r.get("userId") or r.get("user_id") or r.get("uid")
-                amt = r.get("amount") or r.get("rechargeAmount") or r.get("money") or 0
+                uid = r.get("UserId") or r.get("userId") or r.get("user_id")
                 ct = ts(r.get("createTime") or r.get("create_time"))
                 if not uid or not ct:
                     continue
                 records.append({
-                    "user_id": int(uid), "amount": float(amt),
+                    "user_id": int(uid),
                     "username": safe(r.get("username") or r.get("nickName"), 100),
-                    "phone": safe(r.get("phone") or r.get("mobile"), 20),
+                    "phone": safe(r.get("userPhone") or r.get("phone"), 20),
+                    "amount": num(r.get("RechargeAmount") or r.get("amount") or r.get("rechargeAmount")),
                     "status": safe(r.get("status") or r.get("state"), 50),
-                    "channel": safe(r.get("channel") or r.get("payChannel"), 100),
+                    "channel": safe(r.get("channelName") or r.get("channel") or r.get("Withdraw Payment Channels"), 100),
                     "create_time": ct,
                     "update_time": ts(r.get("updateTime") or r.get("update_time")),
                 })
@@ -166,21 +175,21 @@ def sync_all(db):
     # --- WITHDRAWALS ---
     try:
         rows = fetch_api(APIS["withdrawals"], token)
+        upsert_users_from_rows(db, rows)
         if rows:
-            total_new_users += upsert_users_from_rows(db, rows)
             records = []
             for r in rows:
-                uid = r.get("userId") or r.get("user_id") or r.get("uid")
-                amt = r.get("amount") or r.get("withdrawAmount") or r.get("money") or 0
+                uid = r.get("UserId") or r.get("userId") or r.get("user_id")
                 ct = ts(r.get("createTime") or r.get("create_time"))
                 if not uid or not ct:
                     continue
                 records.append({
-                    "user_id": int(uid), "amount": float(amt),
-                    "username": safe(r.get("username") or r.get("nickName"), 100),
-                    "phone": safe(r.get("phone") or r.get("mobile"), 20),
-                    "status": safe(r.get("status") or r.get("state"), 50),
-                    "channel": safe(r.get("channel") or r.get("payChannel"), 100),
+                    "user_id": int(uid),
+                    "username": safe(r.get("username") or r.get("bankName"), 100),
+                    "phone": safe(r.get("userPhone") or r.get("phone"), 20),
+                    "amount": num(r.get("WithDrawAmount") or r.get("withdrawAmount") or r.get("amount")),
+                    "status": safe(r.get("0 Under review, 1 Payment processing, 2 Completed, 3 Rejected, 4 Failed") or r.get("status"), 50),
+                    "channel": safe(r.get("Withdraw Payment Channels") or r.get("channel"), 100),
                     "create_time": ct,
                     "update_time": ts(r.get("updateTime") or r.get("update_time")),
                 })
@@ -196,23 +205,23 @@ def sync_all(db):
     except Exception as e:
         results["withdrawals"] = f"Error: {e}"
 
-    # --- WALLET DETAILS (most complete user data) ---
+    # --- WALLET DETAILS ---
     try:
         rows = fetch_api(APIS["wallet"], token)
+        upsert_users_from_rows(db, rows)
         if rows:
-            total_new_users += upsert_users_from_rows(db, rows)
             records = []
             for r in rows:
-                uid = r.get("userId") or r.get("user_id") or r.get("uid")
+                uid = r.get("UserId") or r.get("userId") or r.get("user_id")
                 if not uid:
                     continue
                 records.append({
                     "user_id": int(uid),
-                    "username": safe(r.get("username") or r.get("nickName"), 100),
-                    "phone": safe(r.get("phone") or r.get("mobile"), 20),
-                    "balance": float(r.get("balance") or r.get("userBalance") or 0),
-                    "total_deposits": float(r.get("totalDeposit") or r.get("totalRecharge") or 0),
-                    "total_withdrawals": float(r.get("totalWithdraw") or r.get("totalWithdrawal") or 0),
+                    "username": safe(r.get("Game Name") or r.get("username"), 100),
+                    "phone": safe(r.get("userPhone") or r.get("phone"), 20),
+                    "balance": num(r.get("changeAfter") or r.get("balance")),
+                    "total_deposits": 0.0,
+                    "total_withdrawals": 0.0,
                     "update_time": ts(r.get("updateTime") or r.get("update_time")),
                 })
             if records:
@@ -220,15 +229,13 @@ def sync_all(db):
                     INSERT INTO wallet_details (user_id,username,phone,balance,total_deposits,total_withdrawals,update_time)
                     VALUES (:user_id,:username,:phone,:balance,:total_deposits,:total_withdrawals,:update_time)
                     ON CONFLICT (user_id) DO UPDATE SET
-                      balance=EXCLUDED.balance, total_deposits=EXCLUDED.total_deposits,
-                      total_withdrawals=EXCLUDED.total_withdrawals, update_time=EXCLUDED.update_time
+                      balance=EXCLUDED.balance, update_time=EXCLUDED.update_time
                 """), records)
                 db.commit()
         results["wallet"] = f"{len(rows)} synced"
     except Exception as e:
         results["wallet"] = f"Error: {e}"
 
-    results["users_updated"] = total_new_users
     status = " | ".join(f"{k}: {v}" for k, v in results.items())
     save_status(db, status)
     return results
