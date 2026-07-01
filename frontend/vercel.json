@@ -1,6 +1,6 @@
 {
   "rewrites": [
-    { "source": "/api/:path*", "destination": "https://YOUR_ORACLE_VM_IP/api/:path*" },
+    { "source": "/api/:path*", "destination": "https://project05-babt.onrender.com/api/:path*" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [
