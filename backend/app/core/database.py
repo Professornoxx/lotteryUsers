@@ -1,22 +1,33 @@
-import oracledb
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import sessionmaker, Session
 from app.core.config import settings
 
-_pool = None
+engine = create_engine(
+    settings.DATABASE_URL,
+    pool_size=5,
+    max_overflow=10,
+    pool_pre_ping=True,
+)
+
+SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 
 
-def get_pool():
-    global _pool
-    if _pool is None:
-        _pool = oracledb.create_pool(
-            user=settings.ORACLE_USER,
-            password=settings.ORACLE_PASSWORD,
-            dsn=f"{settings.ORACLE_HOST}:{settings.ORACLE_PORT}/{settings.ORACLE_SERVICE}",
-            min=2,
-            max=10,
-            increment=1,
-        )
-    return _pool
+def get_db() -> Session:
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 
-def get_connection():
-    return get_pool().acquire()
+def query(db: Session, sql: str, params: dict = None):
+    result = db.execute(text(sql), params or {})
+    cols = list(result.keys())
+    return [dict(zip(cols, row)) for row in result.fetchall()]
+
+
+def query_one(db: Session, sql: str, params: dict = None):
+    result = db.execute(text(sql), params or {})
+    cols = list(result.keys())
+    row = result.fetchone()
+    return dict(zip(cols, row)) if row else {}
