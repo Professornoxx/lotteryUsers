@@ -34,7 +34,7 @@ def build_payload():
     return {
         "packageId": PACKAGE_ID,
         "pageNum": 1,
-        "pageSize": 100000,
+        "pageSize": 5000,
         "useUpiQuery": True,
         "queryDate": [today, today],
     }
@@ -43,14 +43,21 @@ def build_payload():
 def fetch_api(url: str, token: str):
     import pandas as pd
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
-    resp = requests.post(url, headers=headers, json=build_payload(), timeout=60)
+    resp = requests.post(url, headers=headers, json=build_payload(), timeout=120)
     if resp.status_code != 200:
         raise Exception(f"{resp.status_code}: {resp.text[:200]}")
 
     # Excel binary response (starts with PK zip magic bytes)
-    if resp.content[:2] == b"PK" or "octet-stream" in resp.headers.get("Content-Type", ""):
-        df = pd.read_excel(io.BytesIO(resp.content), engine="openpyxl")
-        return df.to_dict("records")
+    content_type = resp.headers.get("Content-Type", "")
+    if resp.content[:2] == b"PK" or "octet-stream" in content_type or "spreadsheet" in content_type:
+        try:
+            df = pd.read_excel(io.BytesIO(resp.content), engine="openpyxl")
+            return df.to_dict("records")
+        except Exception as e:
+            raise Exception(f"Excel parse error: {e}")
+
+    if not resp.content or len(resp.content) < 2:
+        return []
 
     try:
         data = resp.json()
@@ -61,7 +68,12 @@ def fetch_api(url: str, token: str):
                 return data[key]
         return []
     except Exception:
-        return []
+        # Try Excel as fallback
+        try:
+            df = pd.read_excel(io.BytesIO(resp.content), engine="openpyxl")
+            return df.to_dict("records")
+        except Exception:
+            return []
 
 
 def safe(val, max_len=None):
