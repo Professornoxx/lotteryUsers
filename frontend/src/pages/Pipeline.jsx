@@ -47,17 +47,31 @@ export default function Pipeline() {
     refetchInterval: 60000,
   });
 
+  const { data: pipelineStatus, refetch: refetchStatus } = useQuery({
+    queryKey: ["pipeline-status"],
+    queryFn: () => api.get("/pipeline/status/").then(r => r.data),
+    refetchInterval: 30000,
+  });
+
   async function saveToken(e) {
     e.preventDefault();
     setSaving(true);
     try {
       await api.post("/pipeline/token/", { bearer_token: token });
       setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
+      setToken("");
+      setTimeout(() => { setSaved(false); refetchStatus(); }, 3000);
     } catch {
-      // token saved for next sync
+      setSaved(false);
     }
     setSaving(false);
+  }
+
+  async function manualSync() {
+    try {
+      await api.post("/pipeline/sync/");
+      setTimeout(refetchStatus, 5000);
+    } catch {}
   }
 
   return (
@@ -114,24 +128,46 @@ export default function Pipeline() {
           </div>
         </div>
 
+        {/* Sync Status */}
+        <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 mb-4 flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className={`w-2 h-2 rounded-full ${pipelineStatus?.has_token ? "bg-green-400" : "bg-red-400"}`}></span>
+              <span className="text-white font-medium text-sm">
+                {pipelineStatus?.has_token ? "Token configured ✓" : "No token set"}
+              </span>
+            </div>
+            <p className="text-slate-400 text-xs">
+              Last sync: {pipelineStatus?.last_sync ? new Date(pipelineStatus.last_sync).toLocaleString() : "Never"}<br/>
+              {pipelineStatus?.last_status && <span className="text-slate-500">{pipelineStatus.last_status}</span>}
+            </p>
+          </div>
+          <button onClick={manualSync}
+            className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+            🔄 Sync Now
+          </button>
+        </div>
+
         {/* Bearer Token Config */}
         <div className="bg-slate-800 border border-blue-500 rounded-xl p-6 mb-8">
-          <h2 className="text-lg font-semibold text-white mb-1">🔑 API Bearer Token</h2>
-          <p className="text-slate-400 text-sm mb-4">Set the token to enable auto-sync from Deposit, Withdrawal & Wallet APIs</p>
+          <h2 className="text-lg font-semibold text-white mb-1">🔑 Update Bearer Token</h2>
+          <p className="text-slate-400 text-sm mb-4">
+            Paste a new token → system immediately fetches all APIs and updates the dashboard automatically every 20 minutes
+          </p>
           <form onSubmit={saveToken} className="flex gap-3">
             <input
               type="text"
               value={token}
               onChange={e => setToken(e.target.value)}
-              placeholder="Paste Bearer token here..."
+              placeholder="Paste new Bearer token here..."
               className="flex-1 bg-slate-900 border border-slate-600 rounded-lg px-4 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
             />
             <button
               type="submit"
               disabled={saving || !token}
-              className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white px-6 py-2 rounded-lg text-sm font-medium transition-colors"
+              className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white px-6 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap"
             >
-              {saving ? "Saving..." : saved ? "✓ Saved!" : "Save Token"}
+              {saving ? "Saving..." : saved ? "✓ Syncing!" : "Save & Sync"}
             </button>
           </form>
         </div>

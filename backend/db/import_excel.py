@@ -10,7 +10,7 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
-BATCH = 500
+BATCH = 50
 
 
 def safe(val, max_len=None):
@@ -51,19 +51,29 @@ def ts(val):
         return None
 
 
-def import_data(filepath: str):
+def import_data(filepath: str, start: int = 0, end: int = None):
     db_url = os.environ.get("DATABASE_URL")
     if not db_url:
         raise ValueError("DATABASE_URL not set in .env")
 
-    engine = create_engine(db_url)
+    engine = create_engine(
+        db_url,
+        connect_args={"options": "-c statement_timeout=0 -c lock_timeout=0"}
+    )
     print(f"Reading {filepath}...")
-    df = pd.read_excel(filepath, sheet_name=0)
+    try:
+        df = pd.read_excel(filepath, sheet_name=0, engine='calamine')
+    except Exception:
+        df = pd.read_excel(filepath, sheet_name=0, engine='openpyxl')
     total = len(df)
-    print(f"Total rows: {total}")
+    end = end or total
+    df = df.iloc[start:end]
+    total = len(df)
+    print(f"Processing rows {start} to {start+total} ({total} rows)")
 
-    with engine.begin() as conn:
-        for i in range(0, total, BATCH):
+    for i in range(0, total, BATCH):
+        with engine.begin() as conn:
+            conn.execute(text("SET LOCAL statement_timeout = 0"))
             batch = df.iloc[i:i+BATCH]
             users, fins, agents, devices, ims, followups = [], [], [], [], [], []
 
@@ -169,5 +179,7 @@ def import_data(filepath: str):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--file", required=True)
+    parser.add_argument("--start", type=int, default=0)
+    parser.add_argument("--end", type=int, default=None)
     args = parser.parse_args()
-    import_data(args.file)
+    import_data(args.file, start=args.start, end=args.end)
