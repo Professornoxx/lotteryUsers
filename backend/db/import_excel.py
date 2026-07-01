@@ -32,12 +32,21 @@ def num(val):
 
 
 def ts(val):
-    if val is None or (isinstance(val, float) and pd.isna(val)):
-        return None
-    if isinstance(val, datetime):
-        return val
     try:
-        return pd.to_datetime(val).to_pydatetime()
+        if val is None:
+            return None
+        if isinstance(val, float) and pd.isna(val):
+            return None
+        if isinstance(val, pd.NaT.__class__):
+            return None
+        if str(val) in ("NaT", "nan", "None", ""):
+            return None
+        if isinstance(val, datetime):
+            return val
+        result = pd.to_datetime(val, errors='coerce')
+        if result is pd.NaT or pd.isna(result):
+            return None
+        return result.to_pydatetime()
     except Exception:
         return None
 

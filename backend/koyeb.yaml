@@ -1,0 +1,18 @@
+name: lottery-api
+services:
+  - name: lottery-api
+    type: web
+    git:
+      repository: github.com/Professornoxx/lotteryUsers
+      branch: main
+    build:
+      buildpack:
+        build_command: pip install -r requirements.txt
+        run_command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    routes:
+      - port: 8000
+        path: /
+    regions:
+      - fra
+    instance_types:
+      - eco
