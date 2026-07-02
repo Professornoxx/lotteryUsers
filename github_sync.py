@@ -81,6 +81,13 @@ def upsert_users(df):
                   username=COALESCE(EXCLUDED.username,users.username),
                   update_time=EXCLUDED.update_time"""), rows)
 
+BATCH = 500  # insert in batches to avoid Supabase timeout
+
+def batch_insert(c, sql, rows):
+    for i in range(0, len(rows), BATCH):
+        c.execute(text(sql), rows[i:i+BATCH])
+        print(f"    inserted {min(i+BATCH, len(rows))}/{len(rows)}")
+
 def sync_deposits(df):
     rows = []
     for _, r in df.iterrows():
@@ -96,11 +103,10 @@ def sync_deposits(df):
                      "create_time": ct, "update_time": ts(r.get("updateTime"))})
     if rows:
         with engine.begin() as c:
-            c.execute(text("SET LOCAL statement_timeout=0"))
-            c.execute(text("""INSERT INTO deposits(user_id,username,phone,amount,status,channel,create_time,update_time)
+            batch_insert(c, """INSERT INTO deposits(user_id,username,phone,amount,status,channel,create_time,update_time)
                 VALUES(:user_id,:username,:phone,:amount,:status,:channel,:create_time,:update_time)
                 ON CONFLICT(user_id,create_time) DO UPDATE SET
-                  amount=EXCLUDED.amount,status=EXCLUDED.status,update_time=EXCLUDED.update_time"""), rows)
+                  amount=EXCLUDED.amount,status=EXCLUDED.status,update_time=EXCLUDED.update_time""", rows)
     return len(rows)
 
 def sync_withdrawals(df):
@@ -118,11 +124,10 @@ def sync_withdrawals(df):
                      "create_time": ct, "update_time": ts(r.get("updateTime"))})
     if rows:
         with engine.begin() as c:
-            c.execute(text("SET LOCAL statement_timeout=0"))
-            c.execute(text("""INSERT INTO withdrawals(user_id,username,phone,amount,status,channel,create_time,update_time)
+            batch_insert(c, """INSERT INTO withdrawals(user_id,username,phone,amount,status,channel,create_time,update_time)
                 VALUES(:user_id,:username,:phone,:amount,:status,:channel,:create_time,:update_time)
                 ON CONFLICT(user_id,create_time) DO UPDATE SET
-                  amount=EXCLUDED.amount,status=EXCLUDED.status,update_time=EXCLUDED.update_time"""), rows)
+                  amount=EXCLUDED.amount,status=EXCLUDED.status,update_time=EXCLUDED.update_time""", rows)
     return len(rows)
 
 def sync_wallet(df):
@@ -138,11 +143,10 @@ def sync_wallet(df):
                      "update_time": ts(r.get("updateTime"))})
     if rows:
         with engine.begin() as c:
-            c.execute(text("SET LOCAL statement_timeout=0"))
-            c.execute(text("""INSERT INTO wallet_details(user_id,username,phone,balance,total_deposits,total_withdrawals,update_time)
+            batch_insert(c, """INSERT INTO wallet_details(user_id,username,phone,balance,total_deposits,total_withdrawals,update_time)
                 VALUES(:user_id,:username,:phone,:balance,:total_deposits,:total_withdrawals,:update_time)
                 ON CONFLICT(user_id) DO UPDATE SET
-                  balance=EXCLUDED.balance,update_time=EXCLUDED.update_time"""), rows)
+                  balance=EXCLUDED.balance,update_time=EXCLUDED.update_time""", rows)
     return len(rows)
 
 def save_status(status):
