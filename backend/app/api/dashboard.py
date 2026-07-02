@@ -10,20 +10,17 @@ router = APIRouter()
 def summary(db: Session = Depends(get_db), _=Depends(get_current_admin)):
     return query_one(db, """
         SELECT
-            COUNT(u.user_id)                                    AS total_users,
-            SUM(CASE WHEN u.user_status = 0 THEN 1 END)        AS active_users,
-            SUM(CASE WHEN u.user_status = 1 THEN 1 END)        AS banned_users,
-            SUM(CASE WHEN u.is_test = 1 THEN 1 END)            AS test_users,
-            SUM(CASE WHEN ua.agent_status = 3 THEN 1 END)      AS approved_agents,
-            COALESCE(SUM(f.total_deposits), 0)                 AS total_deposits,
-            COALESCE(SUM(f.total_withdrawals), 0)              AS total_withdrawals,
-            COALESCE(SUM(f.balance), 0)                        AS total_balance,
-            COALESCE(SUM(f.frozen_amount), 0)                  AS total_frozen,
-            ROUND(COALESCE(AVG(f.total_deposits), 0)::numeric, 2) AS avg_deposit,
-            COALESCE(SUM(f.recharge_count), 0)                 AS total_recharges
-        FROM users u
-        LEFT JOIN user_financials f ON f.user_id = u.user_id
-        LEFT JOIN user_agents ua ON ua.user_id = u.user_id
+            (SELECT COUNT(*) FROM users)                          AS total_users,
+            (SELECT COUNT(*) FROM users WHERE user_status = 0)   AS active_users,
+            (SELECT COUNT(*) FROM users WHERE user_status = 1)   AS banned_users,
+            (SELECT COUNT(*) FROM users WHERE is_test = 1)       AS test_users,
+            (SELECT COALESCE(SUM(amount),0) FROM deposits)       AS total_deposits,
+            (SELECT COALESCE(SUM(amount),0) FROM withdrawals)    AS total_withdrawals,
+            (SELECT COALESCE(SUM(balance),0) FROM wallet_details) AS total_balance,
+            (SELECT COUNT(*) FROM deposits)                       AS total_recharges,
+            0                                                     AS approved_agents,
+            0                                                     AS total_frozen,
+            0                                                     AS avg_deposit
     """)
 
 
