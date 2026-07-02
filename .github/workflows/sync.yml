@@ -1,0 +1,26 @@
+name: Sync API Data Every 20 Minutes
+
+on:
+  schedule:
+    - cron: "0,20,40 * * * *"   # runs at :00, :20, :40 every hour
+  workflow_dispatch:              # allows manual trigger from GitHub UI
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install pandas openpyxl requests sqlalchemy psycopg2-binary
+
+      - name: Run sync
+        env:
+          DB_URL: ${{ secrets.DB_URL }}
+          BEARER_TOKEN: ${{ secrets.BEARER_TOKEN }}
+        run: python3 github_sync.py
