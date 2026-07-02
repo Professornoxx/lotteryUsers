@@ -214,10 +214,11 @@
 
   async function login() {
     try {
-      const r = await fetch(API + "/auth/login/", {
+      const r = await fetch(API + "/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: "admin", password: "admin123" })
+        body: JSON.stringify({ username: "admin", password: "admin123" }),
+        redirect: "follow"
       });
       if (r.ok) {
         const d = await r.json();
@@ -231,10 +232,11 @@
     if (!authToken) await login();
     const opts = {
       method,
-      headers: { "Authorization": `Bearer ${authToken}`, "Content-Type": "application/json" }
+      headers: { "Authorization": `Bearer ${authToken}`, "Content-Type": "application/json" },
+      redirect: "follow"
     };
     if (body) opts.body = JSON.stringify(body);
-    const r = await fetch(API + path, opts);
+    const r = await fetch(API + path.replace(/\/$/, ""), opts);
     if (r.status === 401) { authToken = ""; await login(); return apiFetch(path, method, body); }
     return r.json();
   }
