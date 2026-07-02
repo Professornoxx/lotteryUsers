@@ -17,7 +17,12 @@ class Settings(BaseSettings):
     CLOUDINARY_API_SECRET: str = ""
 
     # CORS
-    CORS_ORIGINS: List[str] = ["http://localhost:5173", "https://project05.vercel.app"]
+    CORS_ORIGINS: List[str] = [
+        "http://localhost:5173",
+        "https://project05.vercel.app",
+        "https://projectzerofive.vercel.app",
+        "https://project05-pipeline.vercel.app",
+    ]
 
     # Export
     EXPORT_DIR: str = "/opt/lottery/exports"
