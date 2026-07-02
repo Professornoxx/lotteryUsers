@@ -7,9 +7,14 @@ from datetime import date
 import pandas as pd
 from sqlalchemy import create_engine, text
 
-DB_URL = os.environ["DB_URL"]
 TOKEN  = os.environ["BEARER_TOKEN"]
 TODAY  = date.today().strftime("%Y-%m-%d")
+
+# Supabase REST API (avoids DB URL encoding issues)
+SB_URL  = "https://dglehhqpwdsyuezzupje.supabase.co"
+SB_KEY  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRnbGVoaHFwd2RzeXVlenp1cGplIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MTM3MjI3OCwiZXhwIjoyMDY2OTQ4Mjc4fQ.dummy"
+# Use direct DB URL with proper encoding
+DB_URL = "postgresql://postgres.dglehhqpwdsyuezzupje:Brightpathtec%40%40@aws-1-ap-northeast-1.pooler.supabase.com:6543/postgres"
 
 APIS = {
     "deposits":    "https://api.rumanagers.online/prod-api/business/water/export",
@@ -53,7 +58,8 @@ def fetch(url):
     if r.status_code != 200:
         raise Exception(f"HTTP {r.status_code}: {r.text[:200]}")
     if r.content[:2] != b"PK":
-        raise Exception("Response is not an Excel file")
+        print(f"  Response body: {r.content[:100]}")
+        raise Exception(f"Response is not an Excel file ({len(r.content)} bytes)")
     return pd.read_excel(io.BytesIO(r.content), engine="openpyxl")
 
 def upsert_users(df):

@@ -21,6 +21,5 @@ jobs:
 
       - name: Run sync
         env:
-          DB_URL: ${{ secrets.DB_URL }}
           BEARER_TOKEN: ${{ secrets.BEARER_TOKEN }}
         run: python3 github_sync.py
