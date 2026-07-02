@@ -23,7 +23,7 @@ APIS = {
 }
 
 PAYLOAD = {
-    "packageId": 10, "pageNum": 1, "pageSize": 100000,
+    "packageId": 10, "pageNum": 1, "pageSize": 5000,
     "useUpiQuery": True, "queryDate": [TODAY, TODAY],
 }
 HEADERS = {"Authorization": f"Bearer {TOKEN}", "Content-Type": "application/json"}
@@ -159,10 +159,9 @@ for name, url in APIS.items():
     try:
         df = fetch(url)
         print(f"  Rows: {len(df)}, Columns: {df.columns.tolist()[:5]}")
-        upsert_users(df)
-        if name == "deposits":    results[name] = sync_deposits(df)
+        if name == "deposits":      results[name] = sync_deposits(df)
         elif name == "withdrawals": results[name] = sync_withdrawals(df)
-        elif name == "wallet":    results[name] = sync_wallet(df)
+        elif name == "wallet":      results[name] = sync_wallet(df)
         print(f"  ✓ Saved {results[name]} records")
     except Exception as e:
         print(f"  ✗ ERROR: {e}")
