@@ -16,8 +16,12 @@ export default function Login() {
     try {
       await login(form.username, form.password);
       navigate("/");
-    } catch {
-      setError("Invalid username or password");
+    } catch (err) {
+      if (err.response?.status === 401) {
+        setError("Invalid username or password");
+      } else {
+        setError("Server is starting up, please try again in 10 seconds...");
+      }
     } finally {
       setLoading(false);
     }
