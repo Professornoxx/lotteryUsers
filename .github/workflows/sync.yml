@@ -22,4 +22,5 @@ jobs:
       - name: Run sync
         env:
           BEARER_TOKEN: ${{ secrets.BEARER_TOKEN }}
+          SB_SERVICE_KEY: ${{ secrets.SB_SERVICE_KEY }}
         run: python3 github_sync.py
