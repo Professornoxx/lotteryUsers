@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pipeline Management — Project 05</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background: #020617; color: #f8fafc; font-family: system-ui, sans-serif; }
+    .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 20px; }
+    .step-arrow { color: #475569; font-size: 24px; display: flex; align-items: center; justify-content: center; }
+    input::placeholder { color: #64748b; }
+    input:focus { outline: none; border-color: #3b82f6; }
+    .pulse { animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+    .fade-in { animation: fadeIn 0.4s ease; }
+    @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+  </style>
+</head>
+<body class="min-h-screen p-6">
+
+<div class="max-w-6xl mx-auto">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-8">
+    <div>
+      <div class="flex items-center gap-3 mb-1">
+        <span class="text-2xl">⚡</span>
+        <h1 class="text-3xl font-bold text-white">Pipeline Management</h1>
+      </div>
+      <p class="text-slate-400 text-sm">Data flow: External APIs → Backend → Supabase → Dashboard</p>
+    </div>
+    <a href="https://projectzerofive.vercel.app" target="_blank"
+       class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
+      📊 Open Dashboard
+    </a>
+  </div>
+
+  <!-- DB Stats -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8" id="stats">
+    <div class="card text-center"><p class="text-slate-400 text-xs mb-1">Total Users</p><p class="text-white text-2xl font-bold" id="stat-users">—</p></div>
+    <div class="card text-center"><p class="text-slate-400 text-xs mb-1">Total Deposits</p><p class="text-green-400 text-2xl font-bold" id="stat-deposits">—</p></div>
+    <div class="card text-center"><p class="text-slate-400 text-xs mb-1">Total Withdrawals</p><p class="text-red-400 text-2xl font-bold" id="stat-withdrawals">—</p></div>
+    <div class="card text-center"><p class="text-slate-400 text-xs mb-1">Wallet Balance</p><p class="text-blue-400 text-2xl font-bold" id="stat-balance">—</p></div>
+  </div>
+
+  <!-- Pipeline Steps -->
+  <div class="mb-8">
+    <h2 class="text-lg font-semibold text-slate-300 mb-4">Pipeline Steps</h2>
+    <div class="grid grid-cols-1 md:grid-cols-7 gap-2 items-center">
+
+      <!-- Step 1 -->
+      <div class="card border-blue-500 md:col-span-1 fade-in">
+        <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-600 to-blue-800 flex items-center justify-center text-xl mb-3">🔗</div>
+        <div class="text-xs text-slate-500 font-mono mb-1">STEP 1</div>
+        <h3 class="text-white font-semibold mb-1 text-sm">External APIs</h3>
+        <p class="text-slate-400 text-xs mb-3">rumanagers.online</p>
+        <ul class="space-y-1 text-xs text-slate-300">
+          <li><span class="text-green-400">✓</span> Deposit Export</li>
+          <li><span class="text-green-400">✓</span> Withdrawal Export</li>
+          <li><span class="text-green-400">✓</span> Wallet Details</li>
+          <li><span class="text-green-400">✓</span> packageId=10</li>
+        </ul>
+      </div>
+
+      <div class="step-arrow hidden md:flex">→</div>
+
+      <!-- Step 2 -->
+      <div class="card border-purple-500 md:col-span-1 fade-in">
+        <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-600 to-purple-800 flex items-center justify-center text-xl mb-3">⚙️</div>
+        <div class="text-xs text-slate-500 font-mono mb-1">STEP 2</div>
+        <h3 class="text-white font-semibold mb-1 text-sm">FastAPI Backend</h3>
+        <p class="text-slate-400 text-xs mb-3">Render.com hosting</p>
+        <ul class="space-y-1 text-xs text-slate-300">
+          <li><span class="text-green-400">✓</span> Validate & clean</li>
+          <li><span class="text-green-400">✓</span> Upsert records</li>
+          <li><span class="text-green-400">✓</span> JWT Auth</li>
+          <li><span class="text-green-400">✓</span> REST API docs</li>
+        </ul>
+      </div>
+
+      <div class="step-arrow hidden md:flex">→</div>
+
+      <!-- Step 3 -->
+      <div class="card border-green-500 md:col-span-1 fade-in">
+        <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-green-600 to-green-800 flex items-center justify-center text-xl mb-3">🗄️</div>
+        <div class="text-xs text-slate-500 font-mono mb-1">STEP 3</div>
+        <h3 class="text-white font-semibold mb-1 text-sm">Supabase DB</h3>
+        <p class="text-slate-400 text-xs mb-3">PostgreSQL cloud</p>
+        <ul class="space-y-1 text-xs text-slate-300">
+          <li><span class="text-green-400">✓</span> users (55,040)</li>
+          <li><span class="text-green-400">✓</span> deposits</li>
+          <li><span class="text-green-400">✓</span> withdrawals</li>
+          <li><span class="text-green-400">✓</span> wallet_details</li>
+        </ul>
+      </div>
+
+      <div class="step-arrow hidden md:flex">→</div>
+
+      <!-- Step 4 -->
+      <div class="card border-yellow-500 md:col-span-1 fade-in">
+        <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-yellow-600 to-yellow-800 flex items-center justify-center text-xl mb-3">📊</div>
+        <div class="text-xs text-slate-500 font-mono mb-1">STEP 4</div>
+        <h3 class="text-white font-semibold mb-1 text-sm">Dashboard</h3>
+        <p class="text-slate-400 text-xs mb-3">React on Vercel</p>
+        <ul class="space-y-1 text-xs text-slate-300">
+          <li><span class="text-green-400">✓</span> KPI Cards</li>
+          <li><span class="text-green-400">✓</span> Charts</li>
+          <li><span class="text-green-400">✓</span> User CRUD</li>
+          <li><span class="text-green-400">✓</span> Export Excel</li>
+        </ul>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Sync Status + Manual Sync -->
+  <div class="card mb-4 flex items-center justify-between">
+    <div>
+      <div class="flex items-center gap-2 mb-1">
+        <span id="token-dot" class="w-2 h-2 rounded-full bg-slate-500"></span>
+        <span id="token-status" class="text-white font-medium text-sm">Checking token...</span>
+      </div>
+      <p class="text-slate-400 text-xs">
+        Last sync: <span id="last-sync">—</span><br/>
+        <span id="last-result" class="text-slate-500"></span>
+      </p>
+    </div>
+    <button onclick="manualSync()" id="sync-btn"
+      class="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
+      🔄 Sync Now
+    </button>
+  </div>
+
+  <!-- Bearer Token -->
+  <div class="card border-blue-500 mb-8">
+    <h2 class="text-lg font-semibold text-white mb-1">🔑 Update Bearer Token</h2>
+    <p class="text-slate-400 text-sm mb-4">
+      Paste a new token → system immediately fetches all APIs → dashboard auto-updates every 20 minutes
+    </p>
+    <div id="token-form" class="flex gap-3">
+      <input id="token-input" type="text" placeholder="Paste new Bearer token here..."
+        class="flex-1 bg-slate-900 border border-slate-600 rounded-lg px-4 py-2 text-sm text-white" />
+      <button onclick="saveToken()"
+        class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap">
+        Save & Sync
+      </button>
+    </div>
+    <div id="token-msg" class="mt-2 text-sm hidden"></div>
+  </div>
+
+  <!-- Quick Links -->
+  <div class="mb-8">
+    <h2 class="text-lg font-semibold text-slate-300 mb-4">Quick Links</h2>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <a href="https://projectzerofive.vercel.app" target="_blank"
+         class="bg-yellow-700 hover:bg-yellow-600 text-white rounded-xl p-4 flex items-center gap-3 transition-colors">
+        <span class="text-2xl">📊</span><span class="font-medium text-sm">Dashboard</span>
+      </a>
+      <a href="https://project05-babt.onrender.com/docs" target="_blank"
+         class="bg-purple-700 hover:bg-purple-600 text-white rounded-xl p-4 flex items-center gap-3 transition-colors">
+        <span class="text-2xl">⚙️</span><span class="font-medium text-sm">Backend API</span>
+      </a>
+      <a href="https://supabase.com/dashboard" target="_blank"
+         class="bg-green-700 hover:bg-green-600 text-white rounded-xl p-4 flex items-center gap-3 transition-colors">
+        <span class="text-2xl">🗄️</span><span class="font-medium text-sm">Supabase DB</span>
+      </a>
+      <a href="https://github.com/Professornoxx/lotteryUsers" target="_blank"
+         class="bg-slate-600 hover:bg-slate-500 text-white rounded-xl p-4 flex items-center gap-3 transition-colors">
+        <span class="text-2xl">💻</span><span class="font-medium text-sm">GitHub Repo</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- API Endpoints -->
+  <div class="card">
+    <h2 class="text-lg font-semibold text-white mb-4">📡 Configured API Endpoints</h2>
+    <div class="space-y-3">
+      <div class="flex items-center gap-3 bg-slate-900 rounded-lg px-4 py-3">
+        <span class="bg-green-700 text-white text-xs font-bold px-2 py-1 rounded">POST</span>
+        <div class="flex-1">
+          <div class="text-white text-xs font-medium">Deposit Export</div>
+          <div class="text-slate-500 text-xs font-mono truncate">https://api.rumanagers.online/prod-api/business/water/export</div>
+        </div>
+        <span id="dep-status" class="text-xs text-slate-500">—</span>
+      </div>
+      <div class="flex items-center gap-3 bg-slate-900 rounded-lg px-4 py-3">
+        <span class="bg-red-700 text-white text-xs font-bold px-2 py-1 rounded">POST</span>
+        <div class="flex-1">
+          <div class="text-white text-xs font-medium">Withdrawal Export</div>
+          <div class="text-slate-500 text-xs font-mono truncate">https://api.rumanagers.online/prod-api/business/withdraw/export</div>
+        </div>
+        <span id="with-status" class="text-xs text-slate-500">—</span>
+      </div>
+      <div class="flex items-center gap-3 bg-slate-900 rounded-lg px-4 py-3">
+        <span class="bg-blue-700 text-white text-xs font-bold px-2 py-1 rounded">POST</span>
+        <div class="flex-1">
+          <div class="text-white text-xs font-medium">Wallet Details Export</div>
+          <div class="text-slate-500 text-xs font-mono truncate">https://api.rumanagers.online/prod-api/business/detail/export</div>
+        </div>
+        <span id="wallet-status" class="text-xs text-slate-500">—</span>
+      </div>
+    </div>
+  </div>
+
+  <p class="text-center text-slate-600 text-xs mt-8">Project 05 Pipeline • Auto-refreshes every 30s</p>
+
+</div>
+
+<script>
+  const API = "https://project05-babt.onrender.com/api";
+  // Store JWT in sessionStorage for this page
+  let authToken = sessionStorage.getItem("p05_jwt") || "";
+
+  async function login() {
+    try {
+      const r = await fetch(API + "/auth/login/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: "admin", password: "admin123" })
+      });
+      if (r.ok) {
+        const d = await r.json();
+        authToken = d.access_token;
+        sessionStorage.setItem("p05_jwt", authToken);
+      }
+    } catch {}
+  }
+
+  async function apiFetch(path, method = "GET", body = null) {
+    if (!authToken) await login();
+    const opts = {
+      method,
+      headers: { "Authorization": `Bearer ${authToken}`, "Content-Type": "application/json" }
+    };
+    if (body) opts.body = JSON.stringify(body);
+    const r = await fetch(API + path, opts);
+    if (r.status === 401) { authToken = ""; await login(); return apiFetch(path, method, body); }
+    return r.json();
+  }
+
+  async function loadStats() {
+    try {
+      const d = await apiFetch("/dashboard/summary/");
+      document.getElementById("stat-users").textContent = d.total_users?.toLocaleString() || "—";
+      document.getElementById("stat-deposits").textContent = d.total_deposits ? "₹" + Number(d.total_deposits).toLocaleString() : "—";
+      document.getElementById("stat-withdrawals").textContent = d.total_withdrawals ? "₹" + Number(d.total_withdrawals).toLocaleString() : "—";
+      document.getElementById("stat-balance").textContent = d.total_balance ? "₹" + Number(d.total_balance).toLocaleString() : "—";
+    } catch {}
+  }
+
+  async function loadStatus() {
+    try {
+      const d = await apiFetch("/pipeline/status/");
+      const dot = document.getElementById("token-dot");
+      const statusEl = document.getElementById("token-status");
+      if (d.has_token) {
+        dot.className = "w-2 h-2 rounded-full bg-green-400";
+        statusEl.textContent = "Token configured ✓";
+      } else {
+        dot.className = "w-2 h-2 rounded-full bg-red-400";
+        statusEl.textContent = "No token set";
+      }
+      document.getElementById("last-sync").textContent = d.last_sync
+        ? new Date(d.last_sync).toLocaleString() : "Never";
+      document.getElementById("last-result").textContent = d.last_status || "";
+
+      // Parse per-API status
+      const s = d.last_status || "";
+      const dep = s.match(/deposits:\s*([^|]+)/)?.[1]?.trim() || "—";
+      const wit = s.match(/withdrawals:\s*([^|]+)/)?.[1]?.trim() || "—";
+      const wal = s.match(/wallet:\s*([^|]+)/)?.[1]?.trim() || "—";
+      const color = v => v.includes("Error") ? "text-red-400" : v === "—" ? "text-slate-500" : "text-green-400";
+      document.getElementById("dep-status").className = "text-xs " + color(dep);
+      document.getElementById("dep-status").textContent = dep;
+      document.getElementById("with-status").className = "text-xs " + color(wit);
+      document.getElementById("with-status").textContent = wit;
+      document.getElementById("wallet-status").className = "text-xs " + color(wal);
+      document.getElementById("wallet-status").textContent = wal;
+    } catch {}
+  }
+
+  async function saveToken() {
+    const t = document.getElementById("token-input").value.trim();
+    if (!t) return;
+    const msg = document.getElementById("token-msg");
+    msg.className = "mt-2 text-sm text-yellow-400";
+    msg.textContent = "Saving token and triggering sync...";
+    msg.classList.remove("hidden");
+    try {
+      await apiFetch("/pipeline/token/", "POST", { bearer_token: t });
+      document.getElementById("token-input").value = "";
+      msg.className = "mt-2 text-sm text-green-400";
+      msg.textContent = "✓ Token saved! Sync triggered. Dashboard will update shortly.";
+      setTimeout(() => { msg.classList.add("hidden"); loadStatus(); }, 5000);
+    } catch {
+      msg.className = "mt-2 text-sm text-red-400";
+      msg.textContent = "✗ Failed to save token. Check backend connection.";
+    }
+  }
+
+  async function manualSync() {
+    const btn = document.getElementById("sync-btn");
+    btn.textContent = "⏳ Syncing...";
+    btn.disabled = true;
+    try {
+      await apiFetch("/pipeline/sync/", "POST");
+      btn.textContent = "✓ Synced!";
+      setTimeout(() => { btn.innerHTML = "🔄 Sync Now"; btn.disabled = false; loadStatus(); loadStats(); }, 5000);
+    } catch {
+      btn.innerHTML = "🔄 Sync Now";
+      btn.disabled = false;
+    }
+  }
+
+  // Init
+  async function init() {
+    await login();
+    loadStats();
+    loadStatus();
+  }
+  init();
+  setInterval(() => { loadStats(); loadStatus(); }, 30000);
+</script>
+
+</body>
+</html>
